@@ -1,0 +1,122 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+html,
+body,
+#root {
+	margin: 0;
+	padding: 0;
+	min-height: 100vh;
+	height: 100%;
+}
+
+body {
+	background: linear-gradient(
+		to bottom right,
+		rgb(2, 6, 23),
+		rgb(23, 37, 84),
+		rgb(15, 23, 42)
+	);
+	background-attachment: fixed;
+}
+
+/* ... existing styles ... */
+
+/* Custom Scrollbar */
+.scrollbar-thin::-webkit-scrollbar {
+	width: 6px;
+	height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+	background: rgba(255, 255, 255, 0.1);
+	border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+	background: rgba(255, 255, 255, 0.2);
+}
+
+/* Monaco Editor Container */
+.monaco-editor .overflow-guard {
+	border-radius: 0;
+}
+
+.monaco-editor .margin {
+	background-color: #0f172a !important;
+}
+
+/* Code font ligatures support */
+@supports (font-variant-ligatures: contextual) {
+	.monaco-editor {
+		font-variant-ligatures: contextual;
+	}
+}
+
+/* Sandpack Custom Styles */
+.sp-wrapper {
+	height: 100% !important;
+}
+
+.sp-layout {
+	height: 100% !important;
+	border: none !important;
+	border-radius: 0 !important;
+}
+
+.sp-preview-container {
+	height: 100% !important;
+	background: #0f172a !important;
+}
+
+.sp-preview-iframe {
+	border: none !important;
+	border-radius: 0 !important;
+}
+
+.sp-console-wrapper {
+	background: #0f172a !important;
+	border: none !important;
+}
+
+.sp-console-header {
+	background: #1e293b !important;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.sp-console-list {
+	background: #0f172a !important;
+}
+
+/* Sandpack Loading */
+.sp-loading {
+	background: #0f172a !important;
+}
+
+/* Sandpack Error Overlay */
+.sp-error-overlay {
+	background: rgba(15, 23, 42, 0.95) !important;
+	backdrop-filter: blur(10px) !important;
+}
+
+/* Scrollbar for Sandpack console */
+.sp-console-list::-webkit-scrollbar {
+	width: 8px;
+}
+
+.sp-console-list::-webkit-scrollbar-track {
+	background: #0f172a;
+}
+
+.sp-console-list::-webkit-scrollbar-thumb {
+	background: rgba(255, 255, 255, 0.1);
+	border-radius: 4px;
+}
+
+.sp-console-list::-webkit-scrollbar-thumb:hover {
+	background: rgba(255, 255, 255, 0.2);
+}
