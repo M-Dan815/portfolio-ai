@@ -10,6 +10,7 @@ import {
 	Share2,
 	MoreVertical,
 	Loader2,
+	MessageSquare,
 	Check,
 } from "lucide-react";
 import ConnectionStatus from "./ConnectionStatus";
@@ -23,6 +24,7 @@ export default function EditorHeader({
 	onPreview,
 	onDownload,
 	onGenerateComponent,
+	onOpenChat,
 	saving,
 	building,
 	lastSaved,
@@ -33,6 +35,7 @@ export default function EditorHeader({
 	wsError = null,
 	wsReconnectCount = 0,
 	onReconnect,
+	chatOpen,
 }) {
 	const navigate = useNavigate();
 	const [showMenu, setShowMenu] = useState(false);
@@ -99,13 +102,24 @@ export default function EditorHeader({
 			{/* Right Section */}
 			<div className="flex items-center gap-2">
 				<button
+					onClick={onOpenChat}
+					className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+						chatOpen
+							? "bg-purple-500/20 text-purple-400"
+							: "bg-white/5 hover:bg-white/10 text-gray-300"
+					}`}
+					title="AI Chat (Ctrl+/)"
+				>
+					<MessageSquare className="w-4 h-4" />
+					<span className="hidden sm:inline">AI Chat</span>
+				</button>{" "}
+				<button
 					onClick={onGenerateComponent}
 					className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-lg transition-colors text-sm text-white"
 				>
 					<Sparkles className="w-4 h-4" />
 					AI Generate
 				</button>
-
 				<div className="relative">
 					<button
 						onClick={() => setShowMenu(!showMenu)}

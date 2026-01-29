@@ -1,3 +1,5 @@
+// Updated Editor.jsx
+
 import React, {useState, useEffect, useCallback, useRef} from "react";
 import {useParams, useNavigate} from "react-router-dom";
 import {useProject} from "../context/ProjectContext";
@@ -11,7 +13,8 @@ import EditorPanel from "../components/editor/EditorPanel";
 import PreviewPanel from "../components/editor/PreviewPanel";
 import ResizablePanel from "../components/editor/ResizablePanel";
 import AIGenerateModal from "../components/editor/AIGenerateModal";
-import {Loader2} from "lucide-react";
+import ChatPanel from "../components/editor/ChatPanel";
+import {Loader2, MessageSquare} from "lucide-react";
 
 /**
  * Convert flat file list to hierarchical tree structure
@@ -115,10 +118,13 @@ export default function Editor() {
 	const [showAIModal, setShowAIModal] = useState(false);
 	const [generating, setGenerating] = useState(false);
 
+	// Chat panel state
+	const [showChatPanel, setShowChatPanel] = useState(false);
+
 	const [previewUrl, setPreviewUrl] = useState(null);
 	const [previewLoading, setPreviewLoading] = useState(false);
 	const [previewError, setPreviewError] = useState(null);
-	const [previewKey, setPreviewKey] = useState(0); // Force preview refresh
+	const [previewKey, setPreviewKey] = useState(0);
 
 	// Load project
 	useEffect(() => {
@@ -127,7 +133,6 @@ export default function Editor() {
 		}
 
 		return () => {
-			// Cleanup polling on unmount
 			if (generationPollRef.current) {
 				clearInterval(generationPollRef.current);
 			}
@@ -152,21 +157,16 @@ export default function Editor() {
 			setLoading(true);
 			console.log("Loading project:", projectId);
 
-			// Get project details
 			const project = await api.getProject(projectId);
 			console.log("Project loaded:", project);
 			setCurrentProject(project);
 
-			// Check if project is still generating
 			if (project.status === "generating") {
 				setIsGenerating(true);
 				startGenerationPolling();
 			}
 
-			// Load files
 			await loadFiles();
-
-			// Set preview URL
 			setPreviewUrl(api.getPreviewUrl(projectId));
 		} catch (error) {
 			console.error("Failed to load project:", error);
@@ -179,7 +179,6 @@ export default function Editor() {
 
 	const loadFiles = async () => {
 		try {
-			// Get file tree
 			const treeResponse = await api.getFileTree(projectId);
 			console.log("File tree response:", treeResponse);
 
@@ -189,7 +188,6 @@ export default function Editor() {
 			console.log("Built file tree:", tree);
 			setFileTree(tree);
 
-			// Get all files content for Sandpack
 			const allFiles = await api.getAllFiles(projectId);
 			console.log("All files response:", allFiles);
 
@@ -197,10 +195,8 @@ export default function Editor() {
 			console.log("Files content keys:", Object.keys(filesContent));
 			setAllFilesContent(filesContent);
 
-			// Force preview refresh
 			setPreviewKey((prev) => prev + 1);
 
-			// Auto-select first editable file if none selected
 			if (!activeFile) {
 				const firstFile = findFirstEditableFile(tree);
 				if (firstFile) {
@@ -237,7 +233,6 @@ export default function Editor() {
 					clearInterval(generationPollRef.current);
 					generationPollRef.current = null;
 
-					// Reload project and files
 					const project = await api.getProject(projectId);
 					setCurrentProject(project);
 					await loadFiles();
@@ -295,7 +290,6 @@ export default function Editor() {
 			let content = allFilesContent[filePath];
 
 			if (content === undefined) {
-				// Fetch from API
 				const fileData = await api.getFile(projectId, filePath);
 				content = fileData.content || "";
 				setAllFilesContent((prev) => ({...prev, [filePath]: content}));
@@ -351,7 +345,7 @@ export default function Editor() {
 	const handleFileContentChange = (filePath, newContent) => {
 		setFileContents((prev) => ({...prev, [filePath]: newContent}));
 		setAllFilesContent((prev) => ({...prev, [filePath]: newContent}));
-		setPreviewKey((prev) => prev + 1); // Trigger preview update
+		setPreviewKey((prev) => prev + 1);
 
 		const isUnsaved = newContent !== originalContents[filePath];
 		setUnsavedFiles((prev) => {
@@ -538,6 +532,37 @@ export default function Editor() {
 		}
 	};
 
+	// Handle chat-initiated file changes
+	const handleChatFilesChanged = async (filesChanged) => {
+		console.log("Chat files changed:", filesChanged);
+
+		// Reload all files to get the updates
+		await loadFiles();
+
+		// If any of the changed files are currently open, reload their content
+		for (const change of filesChanged) {
+			const filePath = change.path || change;
+			if (openFiles.includes(filePath)) {
+				// Update the file content in the editor
+				const newContent = allFilesContent[filePath];
+				if (newContent !== undefined) {
+					setFileContents((prev) => ({...prev, [filePath]: newContent}));
+					setOriginalContents((prev) => ({...prev, [filePath]: newContent}));
+				}
+			}
+		}
+
+		// Refresh preview
+		setPreviewKey((prev) => prev + 1);
+
+		// Refresh chatbot context to ensure it has the latest files
+		try {
+			await api.refreshChatContext(projectId);
+		} catch (err) {
+			console.error("Failed to refresh chat context:", err);
+		}
+	};
+
 	// Keyboard shortcuts
 	useEffect(() => {
 		const handleKeyDown = (e) => {
@@ -554,6 +579,11 @@ export default function Editor() {
 				if (activeFile) {
 					handleCloseFile(activeFile);
 				}
+			}
+			// Toggle chat with Ctrl/Cmd + /
+			if ((e.ctrlKey || e.metaKey) && e.key === "/") {
+				e.preventDefault();
+				setShowChatPanel((prev) => !prev);
 			}
 		};
 
@@ -607,6 +637,7 @@ export default function Editor() {
 				onPreview={handlePreview}
 				onDownload={handleDownload}
 				onGenerateComponent={() => setShowAIModal(true)}
+				onOpenChat={() => setShowChatPanel(true)}
 				saving={saving}
 				building={building}
 				lastSaved={lastSaved}
@@ -615,10 +646,11 @@ export default function Editor() {
 				wsConnecting={ws?.isConnecting || false}
 				wsError={ws?.connectionError}
 				onReconnect={ws?.reconnect}
+				chatOpen={showChatPanel}
 			/>
 
 			{/* Main Content */}
-			<div className="flex-1 overflow-hidden">
+			<div className="flex-1 overflow-hidden relative">
 				<ResizablePanel
 					left={
 						<div className="h-full bg-slate-900 border-r border-white/10">
@@ -669,6 +701,29 @@ export default function Editor() {
 					defaultLeftWidth={240}
 					minLeftWidth={180}
 					maxLeftWidth={400}
+				/>
+
+				{/* Floating Chat Button (when panel is closed) */}
+				{!showChatPanel && (
+					<button
+						onClick={() => setShowChatPanel(true)}
+						className="absolute bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-purple-500 to-blue-500 
+                       hover:from-purple-600 hover:to-blue-600 rounded-full shadow-lg shadow-purple-500/25
+                       flex items-center justify-center text-white transition-all hover:scale-105
+                       z-40"
+						title="Open AI Chat (Ctrl+/)"
+					>
+						<MessageSquare className="w-6 h-6" />
+					</button>
+				)}
+
+				{/* Chat Panel */}
+				<ChatPanel
+					projectId={projectId}
+					isOpen={showChatPanel}
+					onClose={() => setShowChatPanel(false)}
+					onFilesChanged={handleChatFilesChanged}
+					colorScheme={currentProject?.color_scheme || "blue"}
 				/>
 			</div>
 
