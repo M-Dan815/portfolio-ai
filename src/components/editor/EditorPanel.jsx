@@ -1,4 +1,4 @@
-import React, {useState} from "react";
+import React, {useState, useMemo} from "react";
 import {Code, Loader2, X, AlertCircle} from "lucide-react";
 import MonacoEditor, {getFileIcon} from "./MonacoEditor";
 
@@ -55,6 +55,11 @@ export default function EditorPanel({
 }) {
 	const [error, setError] = useState(null);
 
+	// Deduplicate openFiles to prevent key collisions
+	const uniqueOpenFiles = useMemo(() => {
+		return [...new Set(openFiles)];
+	}, [openFiles]);
+
 	const handleEditorChange = (value) => {
 		if (activeFile && onChangeFile) {
 			onChangeFile(activeFile, value);
@@ -72,7 +77,7 @@ export default function EditorPanel({
 		);
 	}
 
-	if (openFiles.length === 0) {
+	if (uniqueOpenFiles.length === 0) {
 		return (
 			<div className="h-full flex items-center justify-center bg-slate-950">
 				<div className="text-center">
@@ -92,7 +97,7 @@ export default function EditorPanel({
 		<div className="h-full flex flex-col bg-slate-950">
 			{/* Tabs */}
 			<div className="flex items-center bg-slate-900/50 border-b border-white/10 overflow-x-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-				{openFiles.map((file) => (
+				{uniqueOpenFiles.map((file) => (
 					<EditorTab
 						key={file}
 						file={file}

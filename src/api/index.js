@@ -178,6 +178,15 @@ class ApiService {
 		});
 	}
 
+	// ==================== Design Options ====================
+
+	async getDesignOptions() {
+		return this.request("/api/design-options");
+	}
+
+	async getProjectDesignIdentity(projectId) {
+		return this.request(`/api/projects/${projectId}/design-identity`);
+	}
 	// ==================== File Endpoints ====================
 
 	async getFileTree(projectId) {
@@ -335,7 +344,54 @@ class ApiService {
 	}
 
 	async chatWithProject(projectId, message, options = {}) {
-		const response = await this.request(`/api/projects/${projectId}/chat`, {
+		const formData = new FormData();
+		formData.append("message", message || "");
+		formData.append("auto_apply", options.auto_apply !== false);
+
+		if (options.image_purpose) {
+			formData.append("image_purpose", options.image_purpose);
+		}
+
+		if (options.image_target_path) {
+			formData.append("image_target_path", options.image_target_path);
+		}
+
+		if (options.include_files) {
+			formData.append("include_files", JSON.stringify(options.include_files));
+		}
+
+		// Add images if present
+		if (options.images && options.images.length > 0) {
+			for (const image of options.images) {
+				formData.append("images", image);
+			}
+		}
+
+		const response = await fetch(
+			`${this.baseUrl}/api/projects/${projectId}/chat`,
+			{
+				method: "POST",
+				headers: {
+					Authorization: `Bearer ${this.getToken()}`,
+					// Don't set Content-Type - let browser set it with boundary for FormData
+				},
+				body: formData,
+			},
+		);
+
+		if (!response.ok) {
+			const error = await response
+				.json()
+				.catch(() => ({detail: "Request failed"}));
+			throw new Error(error.detail || "Chat request failed");
+		}
+
+		return response.json();
+	}
+
+	// Keep the JSON version for non-image requests
+	async chatWithProjectJson(projectId, message, options = {}) {
+		return this.request(`/api/projects/${projectId}/chat/json`, {
 			method: "POST",
 			body: JSON.stringify({
 				message,
@@ -343,7 +399,6 @@ class ApiService {
 				auto_apply: options.auto_apply !== false,
 			}),
 		});
-		return response;
 	}
 
 	async getChatHistory(projectId) {

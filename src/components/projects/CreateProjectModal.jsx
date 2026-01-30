@@ -1,4 +1,4 @@
-import React, {useState, useRef} from "react";
+import React, {useState, useRef, useEffect} from "react";
 import {
 	X,
 	Upload,
@@ -9,9 +9,136 @@ import {
 	ChevronRight,
 	Sparkles,
 	AlertCircle,
+	Palette,
+	Layout,
+	Wand2,
+	Check,
+	Info,
 } from "lucide-react";
 import {useProject} from "../../context/ProjectContext";
 import {useNavigate} from "react-router-dom";
+import api from "../../api";
+
+// Fallback design options (used if API fails)
+const FALLBACK_THEMES = [
+	{
+		id: "modern",
+		name: "Modern",
+		description: "Clean, minimalist, lots of whitespace, refined",
+	},
+	{
+		id: "creative",
+		name: "Creative",
+		description: "Bold, artistic, unique layouts, expressive",
+	},
+	{
+		id: "minimal",
+		name: "Minimal",
+		description: "Ultra-minimal, focus on content, zen-like",
+	},
+	{
+		id: "professional",
+		name: "Professional",
+		description: "Corporate, trustworthy, structured, polished",
+	},
+	{
+		id: "bold",
+		name: "Bold",
+		description: "High contrast, impactful, statement-making",
+	},
+	{
+		id: "futuristic",
+		name: "Futuristic",
+		description: "Sci-fi, tech-forward, cyberpunk influences",
+	},
+	{
+		id: "elegant",
+		name: "Elegant",
+		description: "Luxurious, sophisticated, refined taste",
+	},
+];
+
+const FALLBACK_COLORS = [
+	{
+		id: "blue",
+		name: "Blue",
+		primary: "blue",
+		gradient_from: "blue-600",
+		gradient_to: "indigo-600",
+	},
+	{
+		id: "green",
+		name: "Green",
+		primary: "emerald",
+		gradient_from: "emerald-600",
+		gradient_to: "teal-600",
+	},
+	{
+		id: "purple",
+		name: "Purple",
+		primary: "purple",
+		gradient_from: "purple-600",
+		gradient_to: "violet-600",
+	},
+	{
+		id: "red",
+		name: "Red",
+		primary: "red",
+		gradient_from: "red-600",
+		gradient_to: "rose-600",
+	},
+	{
+		id: "orange",
+		name: "Orange",
+		primary: "orange",
+		gradient_from: "orange-600",
+		gradient_to: "amber-600",
+	},
+	{
+		id: "cyan",
+		name: "Cyan",
+		primary: "cyan",
+		gradient_from: "cyan-600",
+		gradient_to: "sky-600",
+	},
+	{
+		id: "pink",
+		name: "Pink",
+		primary: "pink",
+		gradient_from: "pink-600",
+		gradient_to: "rose-600",
+	},
+	{
+		id: "yellow",
+		name: "Yellow",
+		primary: "yellow",
+		gradient_from: "yellow-500",
+		gradient_to: "amber-500",
+	},
+];
+
+// Color classes for visual swatches
+const COLOR_CLASSES = {
+	blue: "from-blue-600 to-indigo-600",
+	green: "from-emerald-600 to-teal-600",
+	purple: "from-purple-600 to-violet-600",
+	red: "from-red-600 to-rose-600",
+	orange: "from-orange-600 to-amber-600",
+	cyan: "from-cyan-600 to-sky-600",
+	pink: "from-pink-600 to-rose-600",
+	yellow: "from-yellow-500 to-amber-500",
+};
+
+// Theme icons/emojis for visual appeal
+const THEME_ICONS = {
+	modern: "✨",
+	creative: "🎨",
+	minimal: "◯",
+	professional: "💼",
+	bold: "⚡",
+	futuristic: "🚀",
+	elegant: "💎",
+};
 
 export default function CreateProjectModal({isOpen, onClose}) {
 	const navigate = useNavigate();
@@ -31,8 +158,40 @@ export default function CreateProjectModal({isOpen, onClose}) {
 	const [colorScheme, setColorScheme] = useState("blue");
 	const [error, setError] = useState(null);
 	const [creating, setCreating] = useState(false);
+	const [showAdvanced, setShowAdvanced] = useState(false);
+
+	// Design options from API
+	const [designOptions, setDesignOptions] = useState(null);
+	const [loadingOptions, setLoadingOptions] = useState(false);
 
 	const fileInputRef = useRef(null);
+
+	// Fetch design options when modal opens
+	useEffect(() => {
+		if (isOpen && !designOptions) {
+			fetchDesignOptions();
+		}
+	}, [isOpen]);
+
+	const fetchDesignOptions = async () => {
+		setLoadingOptions(true);
+		try {
+			const options = await api.getDesignOptions();
+			setDesignOptions(options);
+		} catch (err) {
+			console.error("Failed to fetch design options:", err);
+			// Use fallback options
+			setDesignOptions({
+				themes: FALLBACK_THEMES,
+				color_schemes: FALLBACK_COLORS,
+			});
+		} finally {
+			setLoadingOptions(false);
+		}
+	};
+
+	const themes = designOptions?.themes || FALLBACK_THEMES;
+	const colors = designOptions?.color_schemes || FALLBACK_COLORS;
 
 	const handleFileSelect = (e) => {
 		const selectedFile = e.target.files[0];
@@ -86,7 +245,6 @@ export default function CreateProjectModal({isOpen, onClose}) {
 				color_scheme: colorScheme,
 			});
 
-			// Navigate to editor
 			navigate(`/editor/${project.project_id}`);
 			onClose();
 		} catch (err) {
@@ -117,7 +275,6 @@ export default function CreateProjectModal({isOpen, onClose}) {
 				color_scheme: colorScheme,
 			});
 
-			// Navigate to editor
 			navigate(`/editor/${project.project_id}`);
 			onClose();
 		} catch (err) {
@@ -158,8 +315,11 @@ export default function CreateProjectModal({isOpen, onClose}) {
 		setFile(null);
 		setPrompt("");
 		setProjectName("");
+		setTheme("modern");
+		setColorScheme("blue");
 		setError(null);
 		setCreating(false);
+		setShowAdvanced(false);
 	};
 
 	const handleClose = () => {
@@ -169,19 +329,9 @@ export default function CreateProjectModal({isOpen, onClose}) {
 
 	if (!isOpen) return null;
 
-	const themes = [
-		{id: "modern", label: "Modern", desc: "Clean and contemporary"},
-		{id: "minimal", label: "Minimal", desc: "Simple and elegant"},
-		{id: "creative", label: "Creative", desc: "Bold and expressive"},
-	];
-
-	const colors = [
-		{id: "blue", color: "bg-blue-500"},
-		{id: "purple", color: "bg-purple-500"},
-		{id: "green", color: "bg-green-500"},
-		{id: "orange", color: "bg-orange-500"},
-		{id: "pink", color: "bg-pink-500"},
-	];
+	// Get current theme and color info
+	const currentTheme = themes.find((t) => t.id === theme) || themes[0];
+	const currentColor = colors.find((c) => c.id === colorScheme) || colors[0];
 
 	return (
 		<div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -192,7 +342,7 @@ export default function CreateProjectModal({isOpen, onClose}) {
 			/>
 
 			{/* Modal */}
-			<div className="relative w-full max-w-2xl bg-slate-900 border border-white/10 rounded-2xl shadow-2xl max-h-[90vh] overflow-hidden">
+			<div className="relative w-full max-w-3xl bg-slate-900 border border-white/10 rounded-2xl shadow-2xl max-h-[90vh] overflow-hidden">
 				{/* Header */}
 				<div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
 					<div className="flex items-center gap-3">
@@ -345,65 +495,69 @@ export default function CreateProjectModal({isOpen, onClose}) {
 								)}
 							</div>
 
-							{/* Options */}
-							<div className="space-y-4">
-								<div>
-									<label className="block text-sm font-medium text-gray-300 mb-2">
-										Project Name (optional)
-									</label>
-									<input
-										type="text"
-										value={projectName}
-										onChange={(e) => setProjectName(e.target.value)}
-										placeholder="My Portfolio"
-										className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
-									/>
-								</div>
-
-								<div>
-									<label className="block text-sm font-medium text-gray-300 mb-2">
-										Theme
-									</label>
-									<div className="grid grid-cols-3 gap-3">
-										{themes.map((t) => (
-											<button
-												key={t.id}
-												onClick={() => setTheme(t.id)}
-												className={`p-3 rounded-xl border text-left transition-all ${
-													theme === t.id
-														? "border-blue-500 bg-blue-500/20"
-														: "border-white/10 hover:border-white/30"
-												}`}
-											>
-												<p className="font-medium text-white text-sm">
-													{t.label}
-												</p>
-												<p className="text-xs text-gray-400">{t.desc}</p>
-											</button>
-										))}
-									</div>
-								</div>
-
-								<div>
-									<label className="block text-sm font-medium text-gray-300 mb-2">
-										Color Scheme
-									</label>
-									<div className="flex gap-3">
-										{colors.map((c) => (
-											<button
-												key={c.id}
-												onClick={() => setColorScheme(c.id)}
-												className={`w-10 h-10 rounded-full ${c.color} transition-all ${
-													colorScheme === c.id
-														? "ring-2 ring-white ring-offset-2 ring-offset-slate-900 scale-110"
-														: "opacity-60 hover:opacity-100"
-												}`}
-												title={c.id}
-											/>
-										))}
-									</div>
-								</div>
+							{/* Project Name */}
+							<div>
+								<label className="block text-sm font-medium text-gray-300 mb-2">
+									Project Name (optional)
+								</label>
+								<input
+									type="text"
+									value={projectName}
+									onChange={(e) => setProjectName(e.target.value)}
+									placeholder="My Portfolio"
+									className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
+								/>
 							</div>
+
+							{/* Design Options Toggle */}
+							<div>
+								<button
+									type="button"
+									onClick={() => setShowAdvanced(!showAdvanced)}
+									className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
+								>
+									<Palette className="w-4 h-4" />
+									<span>Customize Design</span>
+									<ChevronRight
+										className={`w-4 h-4 transition-transform ${showAdvanced ? "rotate-90" : ""}`}
+									/>
+								</button>
+							</div>
+
+							{/* Design Options (Expanded) */}
+							{showAdvanced && (
+								<DesignOptions
+									themes={themes}
+									colors={colors}
+									selectedTheme={theme}
+									selectedColor={colorScheme}
+									onThemeChange={setTheme}
+									onColorChange={setColorScheme}
+									loading={loadingOptions}
+								/>
+							)}
+
+							{/* Quick Preview of Selected Options */}
+							{!showAdvanced && (
+								<div className="flex items-center gap-4 p-3 bg-white/5 rounded-xl">
+									<div className="flex items-center gap-2">
+										<span className="text-gray-400 text-sm">Theme:</span>
+										<span className="text-white text-sm font-medium">
+											{THEME_ICONS[theme] || "✨"} {currentTheme?.name || theme}
+										</span>
+									</div>
+									<div className="w-px h-4 bg-white/20" />
+									<div className="flex items-center gap-2">
+										<span className="text-gray-400 text-sm">Color:</span>
+										<div
+											className={`w-4 h-4 rounded-full bg-gradient-to-r ${COLOR_CLASSES[colorScheme] || COLOR_CLASSES.blue}`}
+										/>
+										<span className="text-white text-sm font-medium capitalize">
+											{colorScheme}
+										</span>
+									</div>
+								</div>
+							)}
 						</div>
 					)}
 
@@ -440,43 +594,16 @@ export default function CreateProjectModal({isOpen, onClose}) {
 								/>
 							</div>
 
-							<div className="grid grid-cols-2 gap-4">
-								<div>
-									<label className="block text-sm font-medium text-gray-300 mb-2">
-										Theme
-									</label>
-									<select
-										value={theme}
-										onChange={(e) => setTheme(e.target.value)}
-										className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-blue-500 transition-colors"
-									>
-										{themes.map((t) => (
-											<option key={t.id} value={t.id} className="bg-slate-900">
-												{t.label}
-											</option>
-										))}
-									</select>
-								</div>
-								<div>
-									<label className="block text-sm font-medium text-gray-300 mb-2">
-										Color Scheme
-									</label>
-									<div className="flex gap-2">
-										{colors.map((c) => (
-											<button
-												key={c.id}
-												onClick={() => setColorScheme(c.id)}
-												className={`w-9 h-9 rounded-lg ${c.color} transition-all ${
-													colorScheme === c.id
-														? "ring-2 ring-white ring-offset-1 ring-offset-slate-900"
-														: "opacity-60 hover:opacity-100"
-												}`}
-												title={c.id}
-											/>
-										))}
-									</div>
-								</div>
-							</div>
+							{/* Full Design Options for Prompt */}
+							<DesignOptions
+								themes={themes}
+								colors={colors}
+								selectedTheme={theme}
+								selectedColor={colorScheme}
+								onThemeChange={setTheme}
+								onColorChange={setColorScheme}
+								loading={loadingOptions}
+							/>
 						</div>
 					)}
 
@@ -530,37 +657,153 @@ export default function CreateProjectModal({isOpen, onClose}) {
 
 				{/* Footer */}
 				{step !== "choose" && (
-					<div className="px-6 py-4 border-t border-white/10 flex items-center justify-end gap-3">
-						<button
-							onClick={() => setStep("choose")}
-							className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
-							disabled={creating || isGenerating}
-						>
-							Back
-						</button>
-						<button
-							onClick={() => {
-								if (step === "cv") handleGenerateFromCV();
-								else if (step === "prompt") handleGenerateFromPrompt();
-								else if (step === "empty") handleCreateEmpty();
-							}}
-							disabled={creating || isGenerating}
-							className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-xl font-semibold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-						>
-							{creating || isGenerating ? (
-								<>
-									<Loader2 className="w-4 h-4 animate-spin" />
-									{step === "empty" ? "Creating..." : "Generating..."}
-								</>
-							) : (
-								<>
-									<Sparkles className="w-4 h-4" />
-									{step === "empty" ? "Create Project" : "Generate Portfolio"}
-								</>
-							)}
-						</button>
+					<div className="px-6 py-4 border-t border-white/10 flex items-center justify-between">
+						<div className="flex items-center gap-2 text-sm text-gray-400">
+							<Wand2 className="w-4 h-4" />
+							<span>
+								AI will create a unique{" "}
+								{currentTheme?.name?.toLowerCase() || "modern"} design
+							</span>
+						</div>
+						<div className="flex items-center gap-3">
+							<button
+								onClick={() => setStep("choose")}
+								className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+								disabled={creating || isGenerating}
+							>
+								Back
+							</button>
+							<button
+								onClick={() => {
+									if (step === "cv") handleGenerateFromCV();
+									else if (step === "prompt") handleGenerateFromPrompt();
+									else if (step === "empty") handleCreateEmpty();
+								}}
+								disabled={creating || isGenerating}
+								className={`flex items-center gap-2 px-6 py-2 bg-gradient-to-r ${COLOR_CLASSES[colorScheme] || COLOR_CLASSES.blue} hover:opacity-90 rounded-xl font-semibold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
+							>
+								{creating || isGenerating ? (
+									<>
+										<Loader2 className="w-4 h-4 animate-spin" />
+										{step === "empty" ? "Creating..." : "Generating..."}
+									</>
+								) : (
+									<>
+										<Sparkles className="w-4 h-4" />
+										{step === "empty" ? "Create Project" : "Generate Portfolio"}
+									</>
+								)}
+							</button>
+						</div>
 					</div>
 				)}
+			</div>
+		</div>
+	);
+}
+
+// Separate component for Design Options
+function DesignOptions({
+	themes,
+	colors,
+	selectedTheme,
+	selectedColor,
+	onThemeChange,
+	onColorChange,
+	loading,
+}) {
+	if (loading) {
+		return (
+			<div className="flex items-center justify-center py-8">
+				<Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
+			</div>
+		);
+	}
+
+	return (
+		<div className="space-y-6">
+			{/* Theme Selection */}
+			<div>
+				<label className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-3">
+					<Layout className="w-4 h-4" />
+					Design Theme
+				</label>
+				<div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+					{themes.map((t) => (
+						<button
+							key={t.id}
+							type="button"
+							onClick={() => onThemeChange(t.id)}
+							className={`relative p-3 rounded-xl border text-left transition-all group ${
+								selectedTheme === t.id
+									? "border-blue-500 bg-blue-500/20 ring-1 ring-blue-500/50"
+									: "border-white/10 hover:border-white/30 hover:bg-white/5"
+							}`}
+						>
+							{selectedTheme === t.id && (
+								<div className="absolute top-2 right-2">
+									<Check className="w-4 h-4 text-blue-400" />
+								</div>
+							)}
+							<div className="text-lg mb-1">{THEME_ICONS[t.id] || "✨"}</div>
+							<p className="font-medium text-white text-sm">{t.name}</p>
+							<p className="text-xs text-gray-400 line-clamp-2 mt-1">
+								{t.description}
+							</p>
+						</button>
+					))}
+				</div>
+			</div>
+
+			{/* Color Scheme Selection */}
+			<div>
+				<label className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-3">
+					<Palette className="w-4 h-4" />
+					Color Scheme
+				</label>
+				<div className="flex flex-wrap gap-3">
+					{colors.map((c) => (
+						<button
+							key={c.id}
+							type="button"
+							onClick={() => onColorChange(c.id)}
+							className={`group relative flex items-center gap-2 px-4 py-2 rounded-xl border transition-all ${
+								selectedColor === c.id
+									? "border-white/50 bg-white/10"
+									: "border-white/10 hover:border-white/30"
+							}`}
+						>
+							<div
+								className={`w-6 h-6 rounded-full bg-gradient-to-r ${COLOR_CLASSES[c.id] || COLOR_CLASSES.blue} ${
+									selectedColor === c.id
+										? "ring-2 ring-white ring-offset-2 ring-offset-slate-900"
+										: ""
+								}`}
+							/>
+							<span
+								className={`text-sm ${selectedColor === c.id ? "text-white font-medium" : "text-gray-400"}`}
+							>
+								{c.name}
+							</span>
+							{selectedColor === c.id && (
+								<Check className="w-4 h-4 text-white" />
+							)}
+						</button>
+					))}
+				</div>
+			</div>
+
+			{/* Design Info */}
+			<div className="flex items-start gap-3 p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+				<Info className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+				<div className="text-sm">
+					<p className="text-blue-300 font-medium mb-1">AI-Powered Design</p>
+					<p className="text-gray-400">
+						Each portfolio gets a unique design personality with custom
+						animations, layouts, and visual effects based on your content. No
+						two portfolios look the same!
+					</p>
+				</div>
 			</div>
 		</div>
 	);

@@ -13,7 +13,6 @@ import {
 	MessageSquare,
 	Check,
 } from "lucide-react";
-import ConnectionStatus from "./ConnectionStatus";
 import AutoSaveIndicator from "./AutoSaveIndicator";
 import {useNavigate} from "react-router-dom";
 
@@ -86,16 +85,6 @@ export default function EditorHeader({
 					lastSaved={lastSaved}
 					hasUnsavedChanges={hasUnsavedChanges}
 					autoSaveEnabled={autoSaveEnabled}
-				/>
-
-				<div className="w-px h-4 bg-white/10" />
-
-				<ConnectionStatus
-					isConnected={wsConnected}
-					isConnecting={wsConnecting}
-					connectionError={wsError}
-					reconnectCount={wsReconnectCount}
-					onReconnect={onReconnect}
 				/>
 			</div>
 

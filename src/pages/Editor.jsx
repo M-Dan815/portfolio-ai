@@ -279,6 +279,7 @@ export default function Editor() {
 	const handleSelectFile = async (filePath) => {
 		console.log("Selecting file:", filePath);
 
+		// If file is already open, just make it active
 		if (openFiles.includes(filePath)) {
 			setActiveFile(filePath);
 			return;
@@ -295,7 +296,14 @@ export default function Editor() {
 				setAllFilesContent((prev) => ({...prev, [filePath]: content}));
 			}
 
-			setOpenFiles((prev) => [...prev, filePath]);
+			// Use Set to guarantee uniqueness
+			setOpenFiles((prev) => {
+				if (prev.includes(filePath)) {
+					return prev; // Already exists, don't add again
+				}
+				return [...prev, filePath];
+			});
+
 			setFileContents((prev) => ({...prev, [filePath]: content}));
 			setOriginalContents((prev) => ({...prev, [filePath]: content}));
 			setActiveFile(filePath);
