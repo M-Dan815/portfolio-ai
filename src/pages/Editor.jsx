@@ -14,6 +14,7 @@ import PreviewPanel from "../components/editor/PreviewPanel";
 import ResizablePanel from "../components/editor/ResizablePanel";
 import AIGenerateModal from "../components/editor/AIGenerateModal";
 import ChatPanel from "../components/editor/ChatPanel";
+import DeploymentOverlay from "../components/editor/DeploymentOverlay";
 import {Loader2, MessageSquare} from "lucide-react";
 
 /**
@@ -120,6 +121,10 @@ export default function Editor() {
 
 	// Chat panel state
 	const [showChatPanel, setShowChatPanel] = useState(false);
+
+	// Deployment state
+	const [showDeploymentOverlay, setShowDeploymentOverlay] = useState(false);
+	const [deploying, setDeploying] = useState(false);
 
 	const [previewUrl, setPreviewUrl] = useState(null);
 	const [previewLoading, setPreviewLoading] = useState(false);
@@ -443,6 +448,37 @@ export default function Editor() {
 		}
 	};
 
+	const handleDeploy = async () => {
+		// Save any unsaved changes first
+		if (unsavedFiles.size > 0) {
+			await handleSave();
+		}
+
+		try {
+			setDeploying(true);
+			setShowDeploymentOverlay(true);
+
+			// Trigger the deployment
+			await api.deployProject(projectId);
+		} catch (error) {
+			console.error("Failed to start deployment:", error);
+			setShowDeploymentOverlay(false);
+			alert("Failed to start deployment: " + error.message);
+		} finally {
+			setDeploying(false);
+		}
+	};
+
+	const handleDeploymentComplete = (deployStatus) => {
+		console.log("Deployment complete:", deployStatus);
+		// Update project with new deploy URL
+		setCurrentProject((prev) => ({
+			...prev,
+			is_deployed: true,
+			deploy_url: deployStatus.deploy_url,
+		}));
+	};
+
 	const handlePreview = () => {
 		if (previewUrl) {
 			window.open(previewUrl, "_blank");
@@ -593,6 +629,11 @@ export default function Editor() {
 				e.preventDefault();
 				setShowChatPanel((prev) => !prev);
 			}
+			// Deploy with Ctrl/Cmd + Shift + D
+			if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "D") {
+				e.preventDefault();
+				handleDeploy();
+			}
 		};
 
 		window.addEventListener("keydown", handleKeyDown);
@@ -642,12 +683,14 @@ export default function Editor() {
 				project={currentProject}
 				onSave={handleSave}
 				onBuild={handleBuild}
+				onDeploy={handleDeploy}
 				onPreview={handlePreview}
 				onDownload={handleDownload}
 				onGenerateComponent={() => setShowAIModal(true)}
 				onOpenChat={() => setShowChatPanel(true)}
 				saving={saving}
 				building={building}
+				deploying={deploying}
 				lastSaved={lastSaved}
 				hasUnsavedChanges={unsavedFiles.size > 0}
 				wsConnected={ws?.isConnected || false}
@@ -741,6 +784,14 @@ export default function Editor() {
 				onClose={() => setShowAIModal(false)}
 				onGenerate={handleGenerateComponent}
 				generating={generating}
+			/>
+
+			{/* Deployment Overlay */}
+			<DeploymentOverlay
+				projectId={projectId}
+				isVisible={showDeploymentOverlay}
+				onComplete={handleDeploymentComplete}
+				onClose={() => setShowDeploymentOverlay(false)}
 			/>
 		</div>
 	);

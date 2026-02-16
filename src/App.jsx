@@ -22,47 +22,49 @@ import About from "./pages/About";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Contact from "./pages/Contact";
-
+import {ToastProvider} from "./components/ui/Toast";
 export default function App() {
 	return (
 		<Router>
-			<ScrollToTop />
-			<AuthProvider>
-				<ProjectProvider>
-					<WebSocketProvider>
-						<Routes>
-							{/* Public routes */}
-							<Route path="/" element={<LandingPage />} />
-							<Route path="/auth" element={<AuthPage />} />
-							<Route path="/about" element={<About />} />
-							<Route path="/privacy" element={<Privacy />} />
-							<Route path="/terms" element={<Terms />} />
-							<Route path="/contact" element={<Contact />} />
+			<ToastProvider>
+				<ScrollToTop />
+				<AuthProvider>
+					<ProjectProvider>
+						<WebSocketProvider>
+							<Routes>
+								{/* Public routes */}
+								<Route path="/" element={<LandingPage />} />
+								<Route path="/auth" element={<AuthPage />} />
+								<Route path="/about" element={<About />} />
+								<Route path="/privacy" element={<Privacy />} />
+								<Route path="/terms" element={<Terms />} />
+								<Route path="/contact" element={<Contact />} />
 
-							{/* Protected routes */}
-							<Route
-								path="/dashboard/*"
-								element={
-									<ProtectedRoute>
-										<Dashboard />
-									</ProtectedRoute>
-								}
-							/>
-							<Route
-								path="/editor/:projectId"
-								element={
-									<ProtectedRoute>
-										<Editor />
-									</ProtectedRoute>
-								}
-							/>
+								{/* Protected routes */}
+								<Route
+									path="/dashboard/*"
+									element={
+										<ProtectedRoute>
+											<Dashboard />
+										</ProtectedRoute>
+									}
+								/>
+								<Route
+									path="/editor/:projectId"
+									element={
+										<ProtectedRoute>
+											<Editor />
+										</ProtectedRoute>
+									}
+								/>
 
-							{/* Fallback route */}
-							<Route path="*" element={<Navigate to="/" replace />} />
-						</Routes>
-					</WebSocketProvider>
-				</ProjectProvider>
-			</AuthProvider>
+								{/* Fallback route */}
+								<Route path="*" element={<Navigate to="/" replace />} />
+							</Routes>
+						</WebSocketProvider>
+					</ProjectProvider>
+				</AuthProvider>
+			</ToastProvider>
 		</Router>
 	);
 }

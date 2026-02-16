@@ -434,6 +434,32 @@ class ApiService {
 			body: JSON.stringify({changes}),
 		});
 	}
+
+	async deployProject(projectId, options = {}) {
+		const params = new URLSearchParams();
+		params.append("provider", options.provider || "vercel");
+		params.append("production", options.production !== false);
+
+		return this.request(`/api/projects/${projectId}/deploy?${params}`, {
+			method: "POST",
+		});
+	}
+
+	async getDeploymentStatus(projectId) {
+		return this.request(`/api/projects/${projectId}/deployment`);
+	}
+
+	async redeployProject(projectId) {
+		return this.request(`/api/projects/${projectId}/redeploy`, {
+			method: "POST",
+		});
+	}
+
+	async undeployProject(projectId) {
+		return this.request(`/api/projects/${projectId}/deployment`, {
+			method: "DELETE",
+		});
+	}
 }
 
 export const api = new ApiService();

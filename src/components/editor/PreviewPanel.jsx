@@ -56,17 +56,6 @@ export default function PreviewPanel({
 							<Code className="w-3 h-3" />
 							Live
 						</button>
-						<button
-							onClick={() => setMode("build")}
-							className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${
-								mode === "build"
-									? "bg-blue-500/20 text-blue-400"
-									: "text-gray-400 hover:text-white"
-							}`}
-						>
-							<Eye className="w-3 h-3" />
-							Build
-						</button>
 					</div>
 				</div>
 
