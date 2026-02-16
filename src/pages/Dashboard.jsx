@@ -13,6 +13,10 @@ import {
 	Save,
 	CheckCircle,
 	AlertCircle,
+	Trash2,
+	MoreVertical,
+	Edit,
+	ExternalLink,
 } from "lucide-react";
 import Header from "../components/Header";
 import {useAuth} from "../context/AuthContext";
@@ -21,6 +25,183 @@ import ProjectList from "../components/projects/ProjectList";
 import CreateProjectModal from "../components/projects/CreateProjectModal";
 import GenerationProgress from "../components/projects/GenerationProgress";
 import api from "../api";
+
+// ==================== Delete Confirmation Modal ====================
+
+function DeleteConfirmModal({
+	isOpen,
+	onClose,
+	onConfirm,
+	projectName,
+	deleting,
+}) {
+	if (!isOpen) return null;
+
+	return (
+		<div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+			{/* Backdrop */}
+			<div
+				className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+				onClick={onClose}
+			/>
+
+			{/* Modal */}
+			<div className="relative bg-slate-900 border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+				<div className="flex items-center gap-4 mb-4">
+					<div className="w-12 h-12 bg-red-500/20 rounded-xl flex items-center justify-center">
+						<Trash2 className="w-6 h-6 text-red-400" />
+					</div>
+					<div>
+						<h3 className="text-lg font-semibold text-white">Delete Project</h3>
+						<p className="text-sm text-gray-400">
+							This action cannot be undone
+						</p>
+					</div>
+				</div>
+
+				<p className="text-gray-300 mb-6">
+					Are you sure you want to delete{" "}
+					<span className="font-semibold text-white">"{projectName}"</span>? All
+					files and deployment data will be permanently removed.
+				</p>
+
+				<div className="flex gap-3">
+					<button
+						onClick={onClose}
+						disabled={deleting}
+						className="flex-1 px-4 py-2.5 bg-white/10 hover:bg-white/20 rounded-xl 
+						         text-white font-medium transition-colors disabled:opacity-50"
+					>
+						Cancel
+					</button>
+					<button
+						onClick={onConfirm}
+						disabled={deleting}
+						className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 
+						         bg-red-500 hover:bg-red-600 rounded-xl text-white font-medium 
+						         transition-colors disabled:opacity-50"
+					>
+						{deleting ? (
+							<>
+								<Loader2 className="w-4 h-4 animate-spin" />
+								Deleting...
+							</>
+						) : (
+							<>
+								<Trash2 className="w-4 h-4" />
+								Delete
+							</>
+						)}
+					</button>
+				</div>
+			</div>
+		</div>
+	);
+}
+
+// ==================== Project Card with Actions ====================
+
+// ==================== Project Card with Actions ====================
+
+function ProjectCard({project, onDelete}) {
+	const [showDeleteModal, setShowDeleteModal] = useState(false);
+	const [deleting, setDeleting] = useState(false);
+
+	const handleDelete = async () => {
+		setDeleting(true);
+		try {
+			await onDelete(project.project_id);
+			setShowDeleteModal(false);
+		} catch (error) {
+			console.error("Failed to delete project:", error);
+		} finally {
+			setDeleting(false);
+		}
+	};
+
+	const statusColors = {
+		ready: "bg-green-500/20 text-green-400",
+		built: "bg-green-500/20 text-green-400",
+		generating: "bg-yellow-500/20 text-yellow-400",
+		building: "bg-yellow-500/20 text-yellow-400",
+		error: "bg-red-500/20 text-red-400",
+		default: "bg-gray-500/20 text-gray-400",
+	};
+
+	return (
+		<>
+			<div className="group flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-xl transition-colors">
+				{/* Project Info - Clickable */}
+				<Link
+					to={`/editor/${project.project_id}`}
+					className="flex items-center gap-3 flex-1 min-w-0"
+				>
+					<div className="w-10 h-10 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+						<FolderOpen className="w-5 h-5 text-blue-400" />
+					</div>
+					<div className="min-w-0">
+						<p className="font-medium text-white truncate">{project.name}</p>
+						<p className="text-sm text-gray-400">
+							{new Date(project.updated_at).toLocaleDateString()}
+						</p>
+					</div>
+				</Link>
+
+				{/* Right side - Status and Actions */}
+				<div className="flex items-center gap-3">
+					{/* Status Badge */}
+					<span
+						className={`px-2 py-1 text-xs rounded-full ${
+							statusColors[project.status] || statusColors.default
+						}`}
+					>
+						{project.status}
+					</span>
+
+					{/* Live Site Link */}
+					{project.deploy_url && (
+						<a
+							href={project.deploy_url}
+							target="_blank"
+							rel="noopener noreferrer"
+							className="p-2 text-green-400 hover:bg-green-500/20 rounded-lg transition-colors"
+							title="View Live Site"
+						>
+							<ExternalLink className="w-4 h-4" />
+						</a>
+					)}
+
+					{/* Edit Button */}
+					<Link
+						to={`/editor/${project.project_id}`}
+						className="p-2 text-blue-400 hover:bg-blue-500/20 rounded-lg transition-colors"
+						title="Open Editor"
+					>
+						<Edit className="w-4 h-4" />
+					</Link>
+
+					{/* Delete Button */}
+					<button
+						onClick={() => setShowDeleteModal(true)}
+						className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
+						title="Delete Project"
+					>
+						<Trash2 className="w-4 h-4" />
+					</button>
+				</div>
+			</div>
+
+			{/* Delete Confirmation Modal */}
+			<DeleteConfirmModal
+				isOpen={showDeleteModal}
+				onClose={() => setShowDeleteModal(false)}
+				onConfirm={handleDelete}
+				projectName={project.name}
+				deleting={deleting}
+			/>
+		</>
+	);
+}
 
 // ==================== Dashboard Home ====================
 
@@ -50,6 +231,10 @@ function DashboardHome() {
 	};
 
 	const recentProjects = projects.slice(0, 6);
+
+	const handleDelete = async (projectId) => {
+		await deleteProject(projectId);
+	};
 
 	return (
 		<div className="space-y-8">
@@ -140,37 +325,11 @@ function DashboardHome() {
 					) : (
 						<div className="space-y-3">
 							{recentProjects.map((project) => (
-								<Link
+								<ProjectCard
 									key={project.project_id}
-									to={`/editor/${project.project_id}`}
-									className="flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-xl transition-colors"
-								>
-									<div className="flex items-center gap-3">
-										<div className="w-10 h-10 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-lg flex items-center justify-center">
-											<FolderOpen className="w-5 h-5 text-blue-400" />
-										</div>
-										<div>
-											<p className="font-medium text-white">{project.name}</p>
-											<p className="text-sm text-gray-400">
-												{new Date(project.updated_at).toLocaleDateString()}
-											</p>
-										</div>
-									</div>
-									<span
-										className={`px-2 py-1 text-xs rounded-full ${
-											project.status === "ready" || project.status === "built"
-												? "bg-green-500/20 text-green-400"
-												: project.status === "generating" ||
-													  project.status === "building"
-													? "bg-yellow-500/20 text-yellow-400"
-													: project.status === "error"
-														? "bg-red-500/20 text-red-400"
-														: "bg-gray-500/20 text-gray-400"
-										}`}
-									>
-										{project.status}
-									</span>
-								</Link>
+									project={project}
+									onDelete={handleDelete}
+								/>
 							))}
 						</div>
 					)}
@@ -209,8 +368,8 @@ function ProjectsPage() {
 		p.name.toLowerCase().includes(searchQuery.toLowerCase()),
 	);
 
-	const handleDelete = (projectId) => {
-		deleteProject(projectId);
+	const handleDelete = async (projectId) => {
+		await deleteProject(projectId);
 	};
 
 	return (
